@@ -1,0 +1,7 @@
+{
+  "id": 1,
+  "name": "esli",
+  "age": 30,
+  "sons": ["Lucas", "Ana"],
+  "deletedDate": null
+}

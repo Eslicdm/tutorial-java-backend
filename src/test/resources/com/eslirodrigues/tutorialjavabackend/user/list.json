@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "name": "esli",
+    "age": 30,
+    "owner": "esli",
+    "sons": ["Lucas", "Ana"],
+    "deletedDate": null
+  },
+  {
+    "id": 2,
+    "name": "alice",
+    "age": 25,
+    "owner": "esli",
+    "sons": [],
+    "deletedDate": "2024-12-31 23:59:59"
+  },
+  {
+    "id": 3,
+    "name": "bob",
+    "age": 40,
+    "owner": "bill",
+    "sons": ["Eva"],
+    "deletedDate": null
+  }
+]
