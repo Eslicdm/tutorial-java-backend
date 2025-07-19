@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.*;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.security.Principal;
@@ -15,7 +16,6 @@ import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
-
 
 class MockitoMemberControllerTest {
 
@@ -35,7 +35,7 @@ class MockitoMemberControllerTest {
         Member member = new Member(1L, "esli", 30, "esli", List.of(), null);
         when(memberRepository.findByIdAndOwner(1L, "esli")).thenReturn(member);
 
-        var response = controller.findMemberById(1L, principal);
+        ResponseEntity<Member> response = controller.findMemberById(1L, principal);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).usingRecursiveComparison().isEqualTo(member);
     }
@@ -44,7 +44,7 @@ class MockitoMemberControllerTest {
     void shouldNotReturnAMemberWithUnknownId() {
         when(memberRepository.findByIdAndOwner(1000L, "esli")).thenReturn(null);
 
-        var response = controller.findMemberById(1000L, principal);
+        ResponseEntity<Member> response = controller.findMemberById(1000L, principal);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         assertThat(response.getBody()).isNull();
     }
@@ -59,7 +59,7 @@ class MockitoMemberControllerTest {
         when(memberRepository.findByOwner(eq("esli"), any(Pageable.class))).thenReturn(page);
 
         Pageable pageable = PageRequest.of(0, 10, Sort.by("age"));
-        var response = controller.findAllMembersByOwner(pageable, principal);
+        ResponseEntity<List<Member>> response = controller.findAllMembersByOwner(pageable, principal);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertThat(response.getBody()).containsExactlyElementsOf(members);
@@ -72,7 +72,7 @@ class MockitoMemberControllerTest {
         UriComponentsBuilder ucb = UriComponentsBuilder.fromPath("");
         when(memberRepository.save(any())).thenReturn(newMemberSaved);
 
-        var response = controller.createMember(newMember, ucb, principal);
+        ResponseEntity<Void> response = controller.createMember(newMember, ucb, principal);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED);
         assertThat(Objects.requireNonNull(response.getHeaders().getLocation()).toString())
@@ -93,7 +93,7 @@ class MockitoMemberControllerTest {
         Member existing = new Member(1L, "esli", 10, "esli", List.of("SomeSon"), null);
         when(memberRepository.findByIdAndOwner(1L, "esli")).thenReturn(existing);
 
-        var response = controller.updateMember(1L, update, principal);
+        ResponseEntity<Void> response = controller.updateMember(1L, update, principal);
 
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         verify(memberRepository).save(argThat(updated ->
@@ -109,7 +109,7 @@ class MockitoMemberControllerTest {
         Member update = new Member(null, "unknow", 60, "esli", List.of("UpdatedSon"), null);
         when(memberRepository.findByIdAndOwner(99999L, "esli")).thenReturn(null);
 
-        var response = controller.updateMember(99999L, update, principal);
+        ResponseEntity<Void> response = controller.updateMember(99999L, update, principal);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
     }
 
@@ -117,7 +117,7 @@ class MockitoMemberControllerTest {
     void shouldDeleteAnExistingMember() {
         when(memberRepository.existsByIdAndOwner(1L, "esli")).thenReturn(true);
 
-        var response = controller.deleteMember(1L, principal);
+        ResponseEntity<Void> response = controller.deleteMember(1L, principal);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NO_CONTENT);
         verify(memberRepository).deleteById(1L);
     }
@@ -126,7 +126,7 @@ class MockitoMemberControllerTest {
     void shouldNotDeleteAMemberThatDoesNotExist() {
         when(memberRepository.existsByIdAndOwner(99999L, "esli")).thenReturn(false);
 
-        var response = controller.deleteMember(99999L, principal);
+        ResponseEntity<Void> response = controller.deleteMember(99999L, principal);
         assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         verify(memberRepository, never()).deleteById(anyLong());
     }

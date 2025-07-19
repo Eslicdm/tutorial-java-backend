@@ -26,7 +26,8 @@ class MemberJsonTest {
 
     private Member[] members;
 
-    private static final DateTimeFormatter DB_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+    private static final DateTimeFormatter DB_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
 
     @BeforeEach
