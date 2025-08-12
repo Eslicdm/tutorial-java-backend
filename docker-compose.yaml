@@ -27,6 +27,7 @@ services:
       KC_DB_USERNAME: ${KC_DB_USERNAME}
       KC_DB_PASSWORD: ${KC_DB_PASSWORD}
       KC_HOSTNAME_URL: http://keycloak:8080
+      KC_HOSTNAME_FRONTEND_URL: http://localhost:8080
     ports:
       - "8080:8080"
     depends_on:

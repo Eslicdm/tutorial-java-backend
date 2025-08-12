@@ -1,8 +1,13 @@
 package com.eslirodrigues.tutorialjavabackend.security;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.event.EventListener;
+import org.springframework.security.authentication.event.AbstractAuthenticationFailureEvent;
+import org.springframework.security.authentication.event.AuthenticationSuccessEvent;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -13,12 +18,20 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 
 import java.util.Arrays;
 import java.util.List;
@@ -27,6 +40,8 @@ import java.util.List;
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(SecurityConfig.class);
 
     @Value("${BASIC_DB_USERNAME}")
     private String ownerUsername;
@@ -45,6 +60,8 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        log.info("Configuring SecurityFilterChain...");
+
         JwtAuthenticationConverter jwtAuthConverter = new JwtAuthenticationConverter();
         jwtAuthConverter.setJwtGrantedAuthoritiesConverter(new KeycloakRoleConverter());
         jwtAuthConverter.setPrincipalClaimName("preferred_username");
@@ -89,6 +106,35 @@ public class SecurityConfig {
     }
 
     @Bean
+    JwtDecoder jwtDecoder() {
+        String jwkSetUri = "http://keycloak:8080/realms/tutorial-java-backend/protocol/openid-connect/certs";
+        NimbusJwtDecoder jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
+
+        OAuth2TokenValidator<Jwt> issuerValidator = jwt -> {
+            List<String> allowedIssuers = List.of(
+                    "http://localhost:8080/realms/tutorial-java-backend",
+                    "http://keycloak:8080/realms/tutorial-java-backend"
+            );
+            if (allowedIssuers.contains(jwt.getIssuer().toString())) {
+                return OAuth2TokenValidatorResult.success();
+            }
+            OAuth2Error error = new OAuth2Error(
+                    "invalid_issuer",
+                    "This token was issued by an untrusted issuer.",
+                    null
+            );
+            return OAuth2TokenValidatorResult.failure(error);
+        };
+
+        OAuth2TokenValidator<Jwt> timestampValidator = new JwtTimestampValidator();
+        OAuth2TokenValidator<Jwt> delegatingValidator =
+                new DelegatingOAuth2TokenValidator<>(timestampValidator, issuerValidator);
+        jwtDecoder.setJwtValidator(delegatingValidator);
+
+        return jwtDecoder;
+    }
+
+    @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of(allowedOrigins));
@@ -102,4 +148,17 @@ public class SecurityConfig {
         return source;
     }
 
+    @EventListener
+    public void handleAuthenticationSuccess(AuthenticationSuccessEvent event) {
+        log.info("✅ [Auth Success] User: '{}', Authorities: {}",
+                event.getAuthentication().getName(),
+                event.getAuthentication().getAuthorities());
+    }
+
+    @EventListener
+    public void handleAuthenticationFailure(AbstractAuthenticationFailureEvent event) {
+        log.warn("❌ [Auth Failure] User: '{}', Exception: {}",
+                event.getAuthentication().getName(),
+                event.getException().getMessage());
+    }
 }
